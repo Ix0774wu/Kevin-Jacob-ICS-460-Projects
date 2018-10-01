@@ -3,8 +3,9 @@ ICS 460 Projects
 
 Server 2 and Client 2 are most recent work.
 
-Still need to:
-  1. Break file into pieces and still have transfer work/ acknowledge individual packets
-  2. Change file from hardcoded to input from command line.
-  
-  done for tonight.  ill be back at it tomorrow.
+Running instructions:
+1. Run Server
+2. Input file to send path in server
+3. Run Client
+4. Enter file destinatin into Client
+5. Profit
