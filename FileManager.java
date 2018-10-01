@@ -48,9 +48,9 @@ public class FileManager {
     	return fileContent;
     }
    
-    public void exportFile(byte[] byteArray,String path) {
+    public void exportFile(String path) {
     	try (FileOutputStream outputStream = new FileOutputStream(path)) {
-    		   outputStream.write(byteArray);
+    		   outputStream.write(fileContent);
     		   
     		} catch (FileNotFoundException e) {
 				// TODO Auto-generated catch block
@@ -63,14 +63,23 @@ public class FileManager {
     
     public void addPacket(byte[] packet) {
     	int pStart = index;
-    	int pEnd = index+packet.length;
-    	System.out.println("["+packetCount+"]-["+pStart+"]-["+pEnd+"]");
-    	fileContent = new byte[index+packet.length];
-    	for(int i = 0; i < packet.length; i++) {
-    		fileContent[i+index] = packet[i];
-    		index ++;
+    	int pEnd = index+packet.length-1;
+    	System.out.println("R["+packetCount+"]-["+pStart+"]-["+pEnd+"]");
+    	System.out.println(index);
+    	if(fileContent == null) {
+    		fileContent = new byte[1024];
+    	}else {
+    	byte[] temp = new byte[index+packet.length];
+    	System.arraycopy(fileContent, 0, temp, 0, index);
+    	fileContent = temp;
+    	System.out.println(fileContent.length);
     	}
     	
+    	for(int i = 0; i < packet.length; i++) {
+    		fileContent[i+index] = packet[i];
+    		
+    	}
+    	index = index + packet.length;
     	packetCount++;
     }
     
@@ -83,8 +92,8 @@ public class FileManager {
     		return end;
     	}
     	
-    	int pEnd = index+packetLength;
-    	System.out.println("["+packetCount+"]-["+pStart+"]-["+pEnd+"]");
+    	int pEnd = index+packetLength-1;
+    	System.out.println("S["+packetCount+"]-["+pStart+"]-["+pEnd+"]");
     	byte[] packet = new byte[packetLength];
     	for(int i = 0; i < packetLength; i++) {
     		packet[i] = fileContent[index];
