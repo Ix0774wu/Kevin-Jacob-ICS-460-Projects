@@ -75,6 +75,7 @@ public class Server {
 				//Null Pointer signals end of file.
 				} catch (NullPointerException ex) {
 					System.out.println("File Sent");
+					break;
 					
 				} catch (IOException ex) {
 
