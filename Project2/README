@@ -1,1 +1,12 @@
 
+To Do:
+
+1.) Acknowledgements:
+  a. work on timeouts so ack can be resent.
+  b. modify server to check checksum bits to check for corruption.
+  c. Change messages to fit requirements.
+  
+2.) Headers:  (this should be pretty simple.  I got it to work with acknowledgements.)
+  a. 
+  b.
+  c.
