@@ -115,8 +115,6 @@ public class Client {
 					socket.receive(response);
 				} catch (SocketTimeoutException e) {
 					// TODO Auto-generated catch block
-					e.printStackTrace();
-					packetsRemaining = false;
 					
 				}
 				

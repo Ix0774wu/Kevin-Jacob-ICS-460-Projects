@@ -22,9 +22,8 @@ public class Server {
 	public static void main(String[] args) throws IOException {
 		int packetStatus;  //signals if packet is intact, corrupt, or dropped
 		int seqno = 1;  //The sequence number of the packet
-		int expectedAckno = 1;
 		int fileSize;
-		boolean acknowledged = false;
+
 		
 		//Create a file Manager
 		FileManager fileM = new FileManager(1024);
