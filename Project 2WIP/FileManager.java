@@ -33,6 +33,9 @@ public class FileManager {
 	public int getPacketCount() {
 		return packetCount;
 	}
+	public int getFileSize() {
+		return fileSize;
+	}
 	
 	public void setPacketCount(int packetCount) {
 		this.packetCount = packetCount;

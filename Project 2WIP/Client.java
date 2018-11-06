@@ -24,10 +24,11 @@ public class Client {
 	
 
 	public static void main(String[] args) throws IOException {
+		boolean packetsRemaining = true;
 		int ackno = 1;
-		int packetStatus = 0;
-		DatagramPacket acknoPacket = null;
-		boolean failed = false;
+		int seqno;  //The sequence number of the received packet
+		int packetStatus;  //Signals if the received packet is corrupted
+		int ackPacketStatus;
 
 		try (DatagramSocket socket = new DatagramSocket(0)){
 			
@@ -45,7 +46,7 @@ public class Client {
 
 			DatagramPacket request = new DatagramPacket(new byte[1], 1, host, PORT);
 
-			DatagramPacket response = new DatagramPacket(new byte[1032], 1032);	
+			DatagramPacket response = new DatagramPacket(new byte[1036], 1036);	
 			
 			
 
@@ -53,97 +54,73 @@ public class Client {
 			
 			FileOutputStream fos = new FileOutputStream(path);
 			
+			
 			socket.receive(response);
-			boolean end = true;
-			while(response.getLength() != 0 && end) {
-				failed = false;
+			
+			while(packetsRemaining == true) {
 				try {
 					
-					//Break down packet
+					//Extract Header from response
 					byte[] packet = response.getData();
-					ByteBuffer dataBB = ByteBuffer.wrap(packet);
-					int inPacketStatus = dataBB.getInt();
-					int seqno = dataBB.getInt();
-					byte[] data = new byte[1024];
-					dataBB.put(data);
+					ByteBuffer bb = ByteBuffer.wrap(packet);
+					packetStatus = bb.getInt();
+					seqno = bb.getInt();
+					if (bb.getInt() > 0) {
+						packetsRemaining = true;
+					}
+					else {
+						packetsRemaining = false;
+					}
+					System.out.println(packetsRemaining);
 					
-					//Dealing with received packet problems
-					if (ackno != seqno) {
-						System.out.println(ackno +" "+ seqno);
-						System.out.println("DUPL " + seqno + " !Seq");
-					}
-					else if (inPacketStatus == 0) {
-						System.out.println("RECV " + seqno + " RECV");
-						fileM.addPacket(data);
-					}
-					else if (inPacketStatus == 1) {
-						System.out.println("RECV " + seqno + " CRPT");
-						failed = true;
-						
-						/*ByteBuffer temp = ByteBuffer.allocate(8);
-						temp.putInt(0);
-						temp.putInt(seqno);
-						System.out.println(seqno);
-						byte[] tempArr = new byte[8];
-						temp.get(tempArr);
-						acknoPacket = new DatagramPacket(tempArr, tempArr.length, host, PORT);*/
-					}
+					//Send file data to file manager
+					byte[] data = new byte[1024];
+					System.arraycopy(packet, 12, data, 0, 1024);
+					fileM.addPacket(data);
 					
 					
 					//Set up acknowledgement
 					byte[] ackArray = new byte[8];
 					ByteBuffer ackBB = ByteBuffer.allocate(8);
 					
-					//Flag for corruption
-					if(Math.random() < .1) {
-						packetStatus = 1;
-						ackBB.putInt(packetStatus);
+					//Simulate Noise
+					//Corrupt
+					if (Math.random() < .1) {
+						ackPacketStatus = 1;
 					}
-					//Flag for dropped packet
-					if(Math.random() < .1) {
-						packetStatus = 2;
-						ackBB.putInt(packetStatus);
+					//Drop
+					else if(Math.random() < .1) {
+						ackPacketStatus = 2;
 					}
-					
-					//Packet with no problems
-					else
-						ackBB.putInt(packetStatus);
-					
+					//Intact
+					else {
+						ackPacketStatus = 0;
+					}
+					ackBB.putInt(ackPacketStatus);
+					System.out.println(ackPacketStatus);
 					ackBB.putInt(ackno);
 					ackBB.rewind();
 					ackBB.get(ackArray);
-					acknoPacket = new DatagramPacket(ackArray, ackArray.length, host, PORT);
-					
-					//Simulate packet drop
-					if (failed != true) {
-						if (packetStatus == 2) {
-							System.out.println("SENDing ACK " + ackno + " DROP");
-						}
-						//Check for corruption
-						else if(packetStatus == 1){
-							socket.send(acknoPacket);
-							System.out.println("SENDing ACK " + ackno + " ERR");
-						}
-						else {
-							socket.send(acknoPacket);
-							System.out.println("SENDing ACK " +ackno + " SENT");
-							if (failed != true) {
-								ackno++;
-							}
-						}
+					DatagramPacket acknoPacket = new DatagramPacket(ackArray, ackArray.length, host, PORT);
+					socket.send(acknoPacket);
+					System.out.println("ackno " + ackno);
+					System.out.println("seqno " + seqno);
+					System.out.println("Sending ack " + ackno);
+					socket.setSoTimeout(3000);
+					if (packetStatus == 0) {
+						ackno++;
 					}
-					
 
 					
 					socket.receive(response);
 				} catch (SocketTimeoutException e) {
-					socket.send(acknoPacket);
-					
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+					packetsRemaining = false;
 					
 				}
 				
 			}
-			
 			fos.write(fileM.fileContent);
 
 			fos.close();
@@ -159,6 +136,8 @@ public class Client {
 		}
 
 	}
+	
+
 
 
 

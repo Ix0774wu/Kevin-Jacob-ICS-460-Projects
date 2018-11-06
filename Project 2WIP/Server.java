@@ -20,15 +20,13 @@ public class Server {
 	private final static int PORT = 2001;
 
 	public static void main(String[] args) throws IOException {
-		int seqno = 1;
-		int ackno = 0;
-		int packetStatus = 0;
-		boolean resend = false;
-		DatagramPacket acknowledgement = null;
-		DatagramPacket response = null;
-
-		//Take a file.
+		int packetStatus;  //signals if packet is intact, corrupt, or dropped
+		int seqno = 1;  //The sequence number of the packet
+		int expectedAckno = 1;
+		int fileSize;
+		boolean acknowledged = false;
 		
+		//Create a file Manager
 		FileManager fileM = new FileManager(1024);
 
 		System.out.println("enter path of file to send");
@@ -37,11 +35,23 @@ public class Server {
 		
 		String filePath = input.next();
 		
+/**	if (args.length > 0) {
+			fileName = args[0];
+		}
+		else fileName = "didn'twork.jpeg";
+**/		
+		
 
 		//Put it into a byte[]
 
 		byte[] bytesArray = fileM.importFile(filePath);
-
+		//determine size of file
+		fileSize = fileM.getFileSize();
+/**
+		FileInputStream fis = new FileInputStream(file);
+		fis.read(bytesArray);
+		fis.close();
+**/
 		try (DatagramSocket socket = new DatagramSocket(PORT)) {
 
 			System.out.println("Waiting for Request...");
@@ -51,76 +61,104 @@ public class Server {
 				try {
 
 					DatagramPacket request = new DatagramPacket(new byte[1024], 1024);
-					acknowledgement = new DatagramPacket(new byte[1024],1024);
+					DatagramPacket acknowledgement = new DatagramPacket(new byte[1024],1024);
 
 					socket.receive(request);
 
+					System.out.println("Request Received.");
 					byte[] packet = null;
 					boolean init = true;
 					while(packet != null || init) {
 						init = false;
 						packet = fileM.nextPacket();
-						ByteBuffer sendBB = ByteBuffer.allocate(1032);
 						
-						//Simulate packet drop
+						//Simulate Noise
+						//Corrupt
 						if (Math.random() < .1) {
 							packetStatus = 1;
-							System.out.println("SENDing " + seqno + " ERR");
+						}
+						//Drop
+						else if (Math.random() < .1) {
+							packetStatus = 2;
+						}
+						//Intact
+						else {
+							packetStatus = 0;
 						}
 						
-						else if (Math.random() < .1) {
+						//Use byte buffer to create packet with header
+						ByteBuffer sendBB = ByteBuffer.allocate(1036);
+						sendBB.putInt(packetStatus);
+						sendBB.putInt(seqno);
+						sendBB.putInt(fileSize);
+						sendBB.put(packet);
+						sendBB.rewind();
+						packet = new byte[1036];
+						sendBB.get(packet);
+						DatagramPacket response = new DatagramPacket(packet, 1036, request.getAddress(), request.getPort());
+						if (fileSize > 1024) {
+							fileSize = fileSize - 1024 ;
+						}
+						else {
+							fileSize = 0;
+						}
+						
+						socket.send(response);
+						
+						//Messages based on packet status
+						//Corrupt
+						if (packetStatus == 1) {
+							System.out.println("SENDing " + seqno + " ERR");
+						}
+						//Drop
+						else if (packetStatus == 2) {
 							packetStatus = 2;
 							System.out.println("SENDing " + seqno + " DROP");
 						}
-						
+						//Intact
 						else {
-							packetStatus = 0;
 							System.out.println("SENDing " + seqno + " SENT");
-						}
-						
-						//Create packet with Header
-						sendBB.putInt(packetStatus);
-						sendBB.putInt(seqno);
-						sendBB.put(packet);
-						sendBB.rewind();
-						packet = new byte[1032];
-						sendBB.get(packet);
-						response = new DatagramPacket(packet, fileM.getPacketLength() + 8, request.getAddress(), request.getPort());
-						
-						//Send Packet
-						if (packetStatus != 2) {
-							socket.send(response);
-							System.out.println("waiting for ack");
+							seqno++;
+							
 						}
 
-						socket.setSoTimeout(2000);
 						
+						
+						//Acknowledgement
 						socket.receive(acknowledgement);
-						//System.out.println("ack received");
 						
 						//Break down acknowledgement
 						byte [] acknodata = acknowledgement.getData();
 						ByteBuffer bb = ByteBuffer.wrap(acknodata);
 						int ackPacketStatus = bb.getInt();
-						ackno = bb.getInt();
-						
-						
-						//If the packet is a repeat
-						if(ackno != seqno) {
-							System.out.println("AckRcvd " + ackno + " DuplAck");
-							socket.send(response);
-						}
-						
-						else if (ackPacketStatus == 0) {
-							System.out.println("AckRcvd " + ackno + " MoveWnd");
-							seqno++;
-						}
-						else if (ackPacketStatus == 1){
-							System.out.println("AckRcvd " + ackno + " ErrAck");
-						}
+						int ackno = bb.getInt();
 							
+						//Packet is intact
+						if (ackPacketStatus == 0) {
+							System.out.println("ackRcvd " + ackno + " MoveWnd");
+						}
+						//Packet is Corrupted
+						else if (ackPacketStatus == 1) {
+							System.out.println("ackRcvd " + ackno + " ErrAck");
+							acknodata = acknowledgement.getData();
+							ByteBuffer ackBB = ByteBuffer.wrap(acknodata);
+							ackPacketStatus = bb.getInt();
+							ackno = bb.getInt();
+						}
+						//Packet is dropped
+						else  {
+							System.out.println("dropped " + ackno);
+							acknodata = acknowledgement.getData();
+							ByteBuffer ackBB = ByteBuffer.wrap(acknodata);
+							ackPacketStatus = bb.getInt();
+							ackno = bb.getInt();
+							
+						}
+						//System.out.println(ackno);
+						//System.out.println(corrupted);
+						}
 						
-					}
+					
 					byte[] end = null;
 					socket.send( new DatagramPacket(end, 0, request.getAddress(), request.getPort()));
 					
@@ -128,12 +166,8 @@ public class Server {
 				//System.out.println("File Sent");
 				//Null Pointer signals end of file.
 				} catch (SocketTimeoutException ex) {
-					System.out.println("Timeout " + (ackno + 1));
-					resend = true;
-					continue;
-				}
-				
-				catch (NullPointerException ex) {
+					//do something
+				} catch (NullPointerException ex) {
 					System.out.println("File Sent");
 					break;
 					
@@ -154,7 +188,4 @@ public class Server {
 		
 
 	}
-
-
-
 }
