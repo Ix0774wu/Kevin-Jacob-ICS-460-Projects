@@ -55,7 +55,7 @@ public class Client {
                         fileM.addPacket(response.getData()); //adds packet only if the next packet is sent
                         System.out.println("[RECV]: "+(int)fileM.getSeqno(response.getData()) + " " + System.currentTimeMillis() + " [RECV]");
                     }else{
-                        System.out.println("[RECV]: "+(int)fileM.getSeqno(response.getData()) + " " + System.currentTimeMillis() + " [!Seq]");
+                    	System.out.println("[RECV]: "+(int)fileM.getSeqno(response.getData()) + " " + System.currentTimeMillis() + " [!Seq]");
                     }
                     int checksum;
                     //Set up acknowledgement
@@ -79,7 +79,7 @@ public class Client {
                     DatagramPacket acknoPacket = new DatagramPacket(ackArray, ackArray.length, host, PORT);
 
                     if(Math.random() < .1){
-                        System.out.println("[SENDing ACK]: " + ackno + " " + System.currentTimeMillis() + " [DRPT]");
+                    	System.out.println("[SENDing ACK]: " + ackno + " " + System.currentTimeMillis() + " [DRPT]");
                     }else{
                         socket.send(acknoPacket);
                         System.out.print("[SENDing ACK]: " + ackno + " " + System.currentTimeMillis());
@@ -91,8 +91,6 @@ public class Client {
 
 
 
-                    socket.setSoTimeout(2000);
-
 
                     if(response.getLength() < 1024)
                         break;
@@ -101,7 +99,6 @@ public class Client {
                 } catch (SocketTimeoutException e) {
                     // TODO Auto-generated catch block
                     //e.printStackTrace();
-                	System.out.println("Timeout");
 
 
                 }

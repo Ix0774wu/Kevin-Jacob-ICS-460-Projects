@@ -8,11 +8,9 @@ import java.util.*;
 public class Server {
 
     private final static int PORT = 2001;
-    private static boolean reSend = false;
+    private static int expected = 1;
 
     public static void main(String[] args) throws IOException {
-    	int expected = 1;
-    	DatagramPacket response = null;
 
         //Take a file.
 
@@ -46,7 +44,6 @@ public class Server {
             while (true) {
 
                 try {
-
                     DatagramPacket request = new DatagramPacket(new byte[1024], 1024);
                     DatagramPacket acknowledgement = new DatagramPacket(new byte[1024],1024);
 
@@ -56,26 +53,23 @@ public class Server {
                     byte[] packet = null;
                     boolean init = true;
                     int ackno = 0;
-                    if (reSend == false) 
-                    	packet = fileM.nextPacket();
+                    packet = fileM.nextPacket();
                     while(packet != null || init) {
                         init = false;
-                        if (reSend == false) {
-                        	response = new DatagramPacket(packet, fileM.getPacketLength(), request.getAddress(), request.getPort());
-                        }
+
+                        DatagramPacket response = new DatagramPacket(packet, fileM.getPacketLength(), request.getAddress(), request.getPort());
                         byte[] ackPacket = new byte[8];
                         if(Math.random() < .02){
-                            System.out.println("[SENDing]:"+ (fileM.getSeqno(packet)) + " " + System.currentTimeMillis() + " [DRPT]" );
-                            
+                        	System.out.println("[SENDing]:"+ (fileM.getSeqno(packet)) + " " + System.currentTimeMillis() + " [DRPT]" );
                         }else{
-                        socket.send(response);
-
+                        	socket.send(response);
+                        }
 
                         if(ackno == fileM.getSeqno(packet))
                             System.out.println("[ReSENDing]:"+ (fileM.getSeqno(packet)) + " " + System.currentTimeMillis() + " [SENT]" );
                         else
                             System.out.println("[SENDing]:"+ (fileM.getSeqno(packet)) +  " " + System.currentTimeMillis() + " [SENT]");
-                        }
+
                         socket.setSoTimeout(2000);
                         socket.receive(acknowledgement);
                         System.out.print("[AckRcvd]:");
@@ -85,10 +79,10 @@ public class Server {
                         ByteBuffer bb = ByteBuffer.wrap(acknodata);
                         int corrupted = bb.getInt();
                         ackno = bb.getInt();
-                        System.out.print(ackno + " " + System.currentTimeMillis());
-                        
+                        System.out.print(ackno);
+
                         if (ackno == expected) {
-                        
+                        	
 	                        if(corrupted == 1){
 	                            fileM.Corrupt(packet);
 	                            System.out.println(" [ErrAck]");
@@ -97,16 +91,16 @@ public class Server {
 	                            System.out.println(" [MoveWnd]");
 	                            packet = fileM.nextPacket();
 	                            expected++;
-	
-	                        }
                         }
-                        else
-                        	System.out.println(" [DuplAck]");
-                        	
+                        }
+                        
+                        else {
+                             System.out.println(" [DuplAck]");
+                        }
+
                         if(response.getLength() < 1024)
                             break;
 
-                        reSend = false;
                     }
                     byte[] end = null;
                     socket.send( new DatagramPacket(end, 0, request.getAddress(), request.getPort()));
@@ -114,14 +108,13 @@ public class Server {
 
                 //System.out.println("File Sent");
                 //Null Pointer signals end of file.
-                } catch (NullPointerException ex) {
-                    System.out.println("File Sent");
+                }catch (SocketTimeoutException ex) {
+                	System.out.println("Timeout");
+            	}catch (NullPointerException ex) {
+                    System.out.println("Null or File Sent");
                     break;
 
-                } catch (SocketTimeoutException ex) {
-                	System.out.println("Timeout");
-                	reSend = true;
-            	}catch (IOException ex) {
+                } catch (IOException ex) {
 
                     ex.printStackTrace();
 
