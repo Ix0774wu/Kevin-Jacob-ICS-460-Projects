@@ -63,23 +63,26 @@ public class Server {
                     	while(packet != null) {
 	
 	                        DatagramPacket response = new DatagramPacket(packet, fileM.getPacketLength(), request.getAddress(), request.getPort());
-	                        if(Math.random() < .02){
+	                        if(Math.random() < .10){
 	                        	if (reSend == true) {
-	                        		System.out.println("[ReSENDing]:"+ (fileM.getSeqno(packet)) + " " + System.currentTimeMillis() + " [DRPT]" );
+	                        		System.out.println("[ReSEND.]:"+ (fileM.getSeqno(packet)) + " " + System.currentTimeMillis() + " [DRPT]" );
 	                        		throw new SocketTimeoutException();
 	                        	}
-	                        	else
+	                        	else {
 	                        		System.out.println("[SENDing]:"+ (fileM.getSeqno(packet)) + " " + System.currentTimeMillis() + " [DRPT]" );
+	                        		reSend = true;
+	                        		throw new SocketTimeoutException();
+	                        	}
 	                        	//need to cause a timeout here
 	                        }else{
 	                        	socket.send(response);
 	                        }
 	
 	                        if(ackno == fileM.getSeqno(packet))
-	                            System.out.println("[ReSENDing]:"+ (fileM.getSeqno(packet)) + " " + System.currentTimeMillis() + " [SENT]" );
+	                            System.out.println("[ReSEND.]:"+ (fileM.getSeqno(packet)) + " " + System.currentTimeMillis() + " [SENT]" );
 	                        else {
 	                        	if (reSend == true)
-	                        		System.out.println("[ReSENDing]:"+ (fileM.getSeqno(packet)) +  " " + System.currentTimeMillis() + " [SENT]");
+	                        		System.out.println("[ReSEND.]:"+ (fileM.getSeqno(packet)) +  " " + System.currentTimeMillis() + " [SENT]");
 	                        	else
 	                        		System.out.println("[SENDing]:"+ (fileM.getSeqno(packet)) +  " " + System.currentTimeMillis() + " [SENT]");
 	                        }
@@ -123,7 +126,6 @@ public class Server {
                         	reSend = true;
                         	//Ensure packet doesn't stay broken
                         	fileM.Corrupt(packet);
-                        	System.out.println("recorrupted");
                         	continue;
                     }
                     
@@ -137,7 +139,7 @@ public class Server {
                 	ex.printStackTrace();
                 	
             	}catch (NullPointerException ex) {
-                    System.out.println("Null or File Sent");
+                    System.out.println("File Sent");
                     break;
 
                 } catch (IOException ex) {
